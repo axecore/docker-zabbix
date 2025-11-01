@@ -48,7 +48,6 @@ mysql_root_exec() {
 # Provision root, DB, users
 echo "[entrypoint] Provisioning MySQL..."
 if [ "$fresh_init" -eq 1 ]; then
-  # root belum ada password → set sekarang
   mysql $sock -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}'; FLUSH PRIVILEGES;"
 fi
 
@@ -74,7 +73,7 @@ echo "[entrypoint] Stopping temporary mysqld..."
 kill ${MYSQL_PID}
 wait ${MYSQL_PID} || true
 
-# zabbix_server.conf
+# ---------------- ZABBIX SERVER CONFIG ----------------
 cat >/etc/zabbix/zabbix_server.conf <<CONF
 LogType=console
 LogFile=/var/log/zabbix/zabbix_server.log
@@ -87,7 +86,34 @@ DebugLevel=${ZBX_DEBUGLEVEL}
 CacheSize=256M
 CONF
 
-# zabbix_agent2.conf
+# ---------------- FRONTEND CONFIG (persist & kompatibel) ----------------
+mkdir -p /etc/zabbix/web /usr/share/zabbix/conf
+
+cat >/etc/zabbix/web/zabbix.conf.php <<PHP
+<?php
+\$DB['TYPE']     = 'MYSQL';
+\$DB['SERVER']   = '127.0.0.1';
+\$DB['PORT']     = '3306';
+\$DB['DATABASE'] = '${MYSQL_DATABASE}';
+\$DB['USER']     = '${MYSQL_USER}';
+\$DB['PASSWORD'] = '${MYSQL_PASSWORD}';
+\$DB['SCHEMA']   = '';
+\$ZBX_SERVER      = '127.0.0.1';
+\$ZBX_SERVER_PORT = '10051';
+\$ZBX_SERVER_NAME = 'Zabbix';
+\$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+PHP
+
+# izin untuk PHP (www-data)
+chown -R www-data:www-data /etc/zabbix/web /usr/share/zabbix/conf
+chmod 775 /etc/zabbix/web
+chmod 640 /etc/zabbix/web/zabbix.conf.php
+
+# symlink kompatibel
+ln -sf /etc/zabbix/web/zabbix.conf.php /usr/share/zabbix/conf/zabbix.conf.php
+chown -h www-data:www-data /usr/share/zabbix/conf/zabbix.conf.php
+
+# ---------------- ZABBIX AGENT2 CONFIG ----------------
 cat >/etc/zabbix/zabbix_agent2.conf <<CONF
 PidFile=/var/run/zabbix/zabbix_agent2.pid
 LogType=console
