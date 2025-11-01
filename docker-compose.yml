@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  zabbix:
+    build: .
+    container_name: zabbix
+    env_file: .env
+    ports:
+      - "8080:8080"   # Zabbix Web (Nginx/PHP-FPM)
+      - "10051:10051" # Zabbix Server
+      - "10050:10050" # Zabbix Agent2 (di dalam container)
+    restart: unless-stopped
+
+    # Bind-mount
+    volumes:
+      - ./ubuntu_data_mnt:/mnt/data
+      - ./ubuntu_zbx_db:/var/lib/mysql
+      - ./ubuntu_zbx_web:/etc/zabbix/web 
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 10051"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
