@@ -49,6 +49,11 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Buat folder config frontend & symlink
+RUN mkdir -p /etc/zabbix/web /usr/share/zabbix/conf \
+ && ln -sf /etc/zabbix/web/zabbix.conf.php /usr/share/zabbix/conf/zabbix.conf.php \
+ && chown -R www-data:www-data /etc/zabbix/web /usr/share/zabbix/conf
+
 EXPOSE 8080 10051 10050
 VOLUME ["/var/lib/mysql", "/var/lib/zabbix", "/var/log"]
 
